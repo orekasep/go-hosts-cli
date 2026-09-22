@@ -10,8 +10,8 @@ var (
 	ColorWarning   = lipgloss.Color("#FFAF00") // Warm Amber
 	ColorDanger    = lipgloss.Color("#FF4672") // Coral Red
 	ColorMuted     = lipgloss.Color("#626262") // Slate Gray
-	ColorHighlight = lipgloss.Color("#383838")
-	ColorBgDark    = lipgloss.Color("#1E1E2E")
+	ColorHighlight = lipgloss.Color("#2A2A38")
+	ColorBgDark    = lipgloss.Color("#16161E")
 	ColorWhite     = lipgloss.Color("#FAFAFA")
 
 	// Header Styles
@@ -32,16 +32,16 @@ var (
 				Bold(true).
 				Foreground(ColorWarning)
 
-	// Panel Styles
+	// Panel Styles (Padding 0 top/bottom, 1 left/right saves vertical height)
 	SidebarStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(ColorPrimary).
-			Padding(1, 1)
+			Padding(0, 1)
 
 	SidebarUnfocusedStyle = lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(ColorMuted).
-				Padding(1, 1)
+				Padding(0, 1)
 
 	TableContainerStyle = lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
@@ -83,7 +83,7 @@ var (
 	// Statusbar & Cheatsheet Styles
 	StatusbarStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#EEEEEE")).
-			Background(lipgloss.Color("#2E2E3E")).
+			Background(lipgloss.Color("#22222E")).
 			Padding(0, 1)
 
 	KeyBadgeStyle = lipgloss.NewStyle().
@@ -92,15 +92,14 @@ var (
 
 	// Modal Dialog Styles
 	ModalBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.DoubleBorder()).
+			Border(lipgloss.RoundedBorder()).
 			BorderForeground(ColorPrimary).
-			Padding(1, 2).
+			Padding(0, 1).
 			Background(ColorBgDark)
 
 	ModalTitleStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(ColorWhite).
 			Background(ColorPrimary).
-			Padding(0, 1).
-			MarginBottom(1)
+			Padding(0, 1)
 )

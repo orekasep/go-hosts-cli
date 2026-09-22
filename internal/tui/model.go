@@ -62,9 +62,10 @@ type Model struct {
 	height      int
 	focus       FocusArea
 	modal       ModalType
-	selectedGrp int // Index into groups list (0 is always "[All]")
-	selectedRow int // Index of selected entry within visible entries
-	searchInput textinput.Model
+	selectedGrp  int // Index into groups list (0 is always "[All]")
+	selectedRow  int // Index of selected entry within visible entries
+	scrollOffset int // Offset for table scrolling
+	searchInput  textinput.Model
 	searchQuery string
 	editForm    EditForm
 	statusMsg   string

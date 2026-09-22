@@ -29,6 +29,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		maxRows := m.height - 7
+		if maxRows < 1 {
+			maxRows = 1
+		}
+		if m.selectedRow >= m.scrollOffset+maxRows {
+			m.scrollOffset = m.selectedRow - maxRows + 1
+		}
+		if m.scrollOffset < 0 {
+			m.scrollOffset = 0
+		}
 		return m, nil
 
 	case applyFinishedMsg:
@@ -93,11 +103,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.groupsList) > 0 {
 					m.selectedGrp = (m.selectedGrp + 1) % len(m.groupsList)
 					m.selectedRow = 0
+					m.scrollOffset = 0
 				}
 			} else {
 				visible := m.GetVisibleEntries()
 				if len(visible) > 0 && m.selectedRow < len(visible)-1 {
 					m.selectedRow++
+					maxRows := m.height - 7
+					if maxRows < 1 {
+						maxRows = 1
+					}
+					if m.selectedRow >= m.scrollOffset+maxRows {
+						m.scrollOffset = m.selectedRow - maxRows + 1
+					}
 				}
 			}
 			return m, nil
@@ -107,10 +125,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.groupsList) > 0 {
 					m.selectedGrp = (m.selectedGrp - 1 + len(m.groupsList)) % len(m.groupsList)
 					m.selectedRow = 0
+					m.scrollOffset = 0
 				}
 			} else {
 				if m.selectedRow > 0 {
 					m.selectedRow--
+					if m.selectedRow < m.scrollOffset {
+						m.scrollOffset = m.selectedRow
+					}
 				}
 			}
 			return m, nil

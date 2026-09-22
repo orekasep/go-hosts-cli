@@ -27,6 +27,7 @@ func (m *Model) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.searchQuery = strings.TrimSpace(m.searchInput.Value())
 			m.modal = ModalNone
 			m.selectedRow = 0
+			m.scrollOffset = 0
 			return *m, nil
 		case "esc":
 			m.modal = ModalNone
@@ -57,6 +58,9 @@ func (m *Model) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.refreshGroups()
 				if m.selectedRow > 0 {
 					m.selectedRow--
+				}
+				if m.scrollOffset > m.selectedRow {
+					m.scrollOffset = m.selectedRow
 				}
 				m.statusMsg = fmt.Sprintf("Removed host '%s'. Changes saved locally.", toDelete.Hostname)
 				m.statusColor = "#FFAF00"
