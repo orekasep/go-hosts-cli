@@ -73,12 +73,10 @@ var (
 	SelectedGroupStyle = lipgloss.NewStyle().
 				Bold(true).
 				Foreground(ColorWhite).
-				Background(ColorSecondary).
-				Padding(0, 1)
+				Background(ColorSecondary)
 
 	NormalGroupStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#C0C0C0")).
-				Padding(0, 1)
+				Foreground(lipgloss.Color("#C0C0C0"))
 
 	// Statusbar & Cheatsheet Styles
 	StatusbarStyle = lipgloss.NewStyle().

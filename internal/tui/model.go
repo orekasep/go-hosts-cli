@@ -1,11 +1,14 @@
 package tui
 
 import (
+	"os"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/orekasep/go-hosts-cli/internal/apply"
 	"github.com/orekasep/go-hosts-cli/internal/core/config"
 	"github.com/orekasep/go-hosts-cli/internal/domain"
+	"golang.org/x/term"
 )
 
 type FocusArea int
@@ -87,10 +90,21 @@ func InitialModel(configPath string) Model {
 	ti.Placeholder = "Search hostname, IP, alias..."
 	ti.CharLimit = 100
 
+	w, h, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil || w <= 0 || h <= 0 {
+		w, h, err = term.GetSize(int(os.Stdin.Fd()))
+		if err != nil || w <= 0 || h <= 0 {
+			w = 80
+			h = 24
+		}
+	}
+
 	m := Model{
 		configPath:  configPath,
 		hostsFile:   hf,
 		privStatus:  priv,
+		width:       w,
+		height:      h,
 		focus:       FocusTable,
 		modal:       ModalNone,
 		selectedGrp: 0,

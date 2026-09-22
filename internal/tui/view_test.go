@@ -1,11 +1,61 @@
 package tui
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/orekasep/go-hosts-cli/internal/domain"
 )
+
+func TestPrintViewLines(t *testing.T) {
+	m := InitialModel("dummy.yaml")
+	m.hostsFile = &domain.HostsFile{
+		Version: 1,
+		Groups: []domain.Group{
+			{
+				Name: "work",
+				Entries: []domain.HostEntry{
+					{ID: "1", IP: "192.168.1.10", Hostname: "api.local", Enabled: true, Comment: "Gateway"},
+					{ID: "2", IP: "10.0.0.1", Hostname: "db.local", Enabled: false, Comment: "Database"},
+				},
+			},
+		},
+	}
+	m.refreshGroups()
+	m.width = 80
+	m.height = 24
+
+	rendered := m.View()
+	lines := strings.Split(rendered, "\n")
+	fmt.Printf("Total lines: %d (expected %d)\n", len(lines), m.height)
+	for i, l := range lines {
+		w := lipgloss.Width(l)
+		fmt.Printf("Line %2d (w=%2d): %s\n", i+1, w, l)
+		if w > m.width {
+			t.Errorf("Line %d exceeds width %d (got %d): %s", i+1, m.width, w, l)
+		}
+	}
+	if len(lines) != m.height {
+		t.Errorf("expected %d lines, got %d", m.height, len(lines))
+	}
+
+	m.openAddForm()
+	modalRendered := m.View()
+	modalLines := strings.Split(modalRendered, "\n")
+	fmt.Printf("\n--- MODAL ---\nTotal modal lines: %d (expected %d)\n", len(modalLines), m.height)
+	for i, l := range modalLines {
+		w := lipgloss.Width(l)
+		fmt.Printf("Modal Line %2d (w=%2d): %s\n", i+1, w, l)
+		if w > m.width {
+			t.Errorf("Modal line %d exceeds width %d (got %d): %s", i+1, m.width, w, l)
+		}
+	}
+	if len(modalLines) != m.height {
+		t.Errorf("expected %d modal lines, got %d", m.height, len(modalLines))
+	}
+}
 
 func TestViewDimensionsOnWindowResize(t *testing.T) {
 	sizes := []struct {
@@ -43,8 +93,8 @@ func TestViewDimensionsOnWindowResize(t *testing.T) {
 		if renderedW > sz.w {
 			t.Errorf("Screen width overflow for %dx%d: rendered width is %d", sz.w, sz.h, renderedW)
 		}
-		if renderedH > sz.h {
-			t.Errorf("Screen height overflow for %dx%d: rendered height is %d", sz.w, sz.h, renderedH)
+		if renderedH != sz.h {
+			t.Errorf("Screen height mismatch for %dx%d: expected %d, got %d", sz.w, sz.h, sz.h, renderedH)
 		}
 
 		// Test Edit Modal View
@@ -56,8 +106,8 @@ func TestViewDimensionsOnWindowResize(t *testing.T) {
 		if modalW > sz.w {
 			t.Errorf("Modal width overflow for %dx%d: rendered width is %d", sz.w, sz.h, modalW)
 		}
-		if modalH > sz.h {
-			t.Errorf("Modal height overflow for %dx%d: rendered height is %d", sz.w, sz.h, modalH)
+		if modalH != sz.h {
+			t.Errorf("Modal height mismatch for %dx%d: expected %d, got %d", sz.w, sz.h, sz.h, modalH)
 		}
 	}
 }
