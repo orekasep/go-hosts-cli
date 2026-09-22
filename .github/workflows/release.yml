@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  goreleaser:
+    name: Build & Release (GitHub & Homebrew)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+
+  chocolatey:
+    name: Publish Chocolatey Package
+    needs: goreleaser
+    runs-on: windows-latest
+    if: false # Enable when CHOCOLATEY_API_KEY secret is configured
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Chocolatey
+        uses: chocolatey/action-setup@v3
+
+      - name: Pack and Push to Chocolatey
+        shell: pwsh
+        env:
+          CHOCO_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
+        run: |
+          $tag = $env:GITHUB_REF -replace 'refs/tags/v', ''
+          
+          # Fetch checksum of windows-amd64 zip from release
+          $checksumUrl = "https://github.com/${{ github.repository }}/releases/download/v$tag/checksums.txt"
+          $checksums = (Invoke-WebRequest -Uri $checksumUrl).Content
+          $winZipChecksum = ($checksums -split "`n" | Select-String "windows_amd64.zip").Line.Split(" ")[0]
+          
+          # Update version and checksum in package files
+          cd packaging/chocolatey
+          (Get-Content hostcli.nuspec) -replace '<version>.*?</version>', "<version>$tag</version>" | Set-Content hostcli.nuspec
+          (Get-Content tools/chocolateyinstall.ps1) `
+            -replace '\$version\s*=.*', "`$version = '$tag'" `
+            -replace 'CHECKSUM_PLACEHOLDER', $winZipChecksum | Set-Content tools/chocolateyinstall.ps1
+          
+          # Build and push
+          choco pack
+          choco apikey --key $env:CHOCO_API_KEY --source https://push.chocolatey.org/
+          choco push hostcli.$tag.nupkg --source https://push.chocolatey.org/

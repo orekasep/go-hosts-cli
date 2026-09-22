@@ -1,0 +1,18 @@
+# Binaries
+/hostcli
+/hostcli.exe
+*.exe
+*.test
+
+# Go artifacts
+dist/
+vendor/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tmp
+*.bak
+test_hosts.yaml

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>hostcli</id>
+    <version>1.0.0</version>
+    <title>hostcli</title>
+    <authors>orekasep</authors>
+    <projectUrl>https://github.com/orekasep/go-hosts-cli</projectUrl>
+    <licenseUrl>https://github.com/orekasep/go-hosts-cli/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <tags>hosts tui cli networking dns windows macos linux</tags>
+    <summary>Modern hosts manager with Bubble Tea TUI and CLI</summary>
+    <description>
+      hostcli is a cross-platform hosts file manager supporting macOS, Linux, and Windows.
+      Features an interactive Bubble Tea terminal UI, hierarchical grouping, and safe apply/rollback.
+    </description>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

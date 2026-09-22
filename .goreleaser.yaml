@@ -1,0 +1,66 @@
+version: 2
+
+project_name: hostcli
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: hostcli
+    main: ./cmd/hostcli
+    binary: hostcli
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/orekasep/go-hosts-cli/internal/cmd.Version={{.Version}}
+      - -X github.com/orekasep/go-hosts-cli/internal/cmd.Commit={{.Commit}}
+      - -X github.com/orekasep/go-hosts-cli/internal/cmd.Date={{.Date}}
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+brews:
+  - name: hostcli
+    repository:
+      owner: orekasep
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    homepage: "https://github.com/orekasep/go-hosts-cli"
+    description: "Modern /etc/hosts manager with Bubble Tea TUI and CLI"
+    license: "MIT"
+    install: |
+      bin.install "hostcli"
+    test: |
+      system "#{bin}/hostcli", "version"
