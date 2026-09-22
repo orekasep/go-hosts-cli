@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $toolsDir   = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
-$version    = '1.0.0'
+$version    = '1.0.1'
 $url64      = "https://github.com/orekasep/go-hosts-cli/releases/download/v$version/hostcli_${version}_windows_amd64.zip"
 
 $packageArgs = @{

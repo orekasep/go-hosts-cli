@@ -12,7 +12,7 @@ import (
 
 var (
 	cfgPath string
-	Version = "1.0.0"
+	Version = "1.0.1"
 	Commit  = "none"
 	Date    = "unknown"
 )
@@ -24,7 +24,7 @@ var rootCmd = &cobra.Command{
 and a scriptable CLI, backed by a clean YAML source of truth at ~/.hostcli/hosts.yaml.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Launch TUI when invoked without subcommands
-		p := tea.NewProgram(tui.InitialModel(cfgPath), tea.WithAltScreen())
+		p := tea.NewProgram(tui.InitialModel(cfgPath, Version), tea.WithAltScreen())
 		if _, err := p.Run(); err != nil {
 			return fmt.Errorf("error running TUI: %w", err)
 		}

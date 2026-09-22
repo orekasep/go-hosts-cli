@@ -75,9 +75,10 @@ type Model struct {
 	statusColor string
 	groupsList  []string // computed list of available groups
 	noticeMsg   string
+	version     string
 }
 
-func InitialModel(configPath string) Model {
+func InitialModel(configPath string, version ...string) Model {
 	hf, err := config.LoadConfig(configPath)
 	if err != nil {
 		hf = &domain.HostsFile{Version: 1, Groups: []domain.Group{}}
@@ -99,12 +100,18 @@ func InitialModel(configPath string) Model {
 		}
 	}
 
+	ver := "1.0.1"
+	if len(version) > 0 && version[0] != "" {
+		ver = version[0]
+	}
+
 	m := Model{
 		configPath:  configPath,
 		hostsFile:   hf,
 		privStatus:  priv,
 		width:       w,
 		height:      h,
+		version:     ver,
 		focus:       FocusTable,
 		modal:       ModalNone,
 		selectedGrp: 0,

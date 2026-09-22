@@ -56,7 +56,11 @@ func (m Model) View() string {
 }
 
 func (m Model) renderHeader() string {
-	title := HeaderStyle.Render(" hostcli v1.0.0 ")
+	ver := m.version
+	if ver == "" {
+		ver = "1.0.1"
+	}
+	title := HeaderStyle.Render(fmt.Sprintf(" hostcli v%s ", ver))
 	titleW := lipgloss.Width(title)
 
 	var privBadge string
