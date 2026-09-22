@@ -16,21 +16,21 @@ func (m Model) View() string {
 		return fmt.Sprintf("Terminal window too small (%dx%d).\nPlease resize to at least 60x12.", m.width, m.height)
 	}
 
-	// 1. Header (exactly 1 line)
+	// 1. Header (fixed 1 line)
 	headerView := m.renderHeader()
 	headerHeight := 1
 
-	// 2. Footer (exactly 2 lines: 1 status line + 1 keybindings line)
+	// 2. Footer (fixed 2 lines: 1 status line + 1 keybindings line)
 	footerView := m.renderFooter()
 	footerHeight := 2
 
-	// 3. Body Dimensions (exact lines matching)
-	bodyHeight := m.height - headerHeight - footerHeight
+	// 3. Body Dimensions (reserve 1 line buffer so terminal cursor never triggers scroll)
+	bodyHeight := m.height - headerHeight - footerHeight - 1
 	if bodyHeight < 6 {
 		bodyHeight = 6
 	}
 
-	// Sidebar width: 24 on standard, 20 on small
+	// Sidebar width
 	sidebarWidth := 24
 	if m.width < 80 {
 		sidebarWidth = 20
@@ -57,6 +57,7 @@ func (m Model) View() string {
 
 func (m Model) renderHeader() string {
 	title := HeaderStyle.Render(" hostcli v1.0.0 ")
+	titleW := lipgloss.Width(title)
 
 	var privBadge string
 	if m.privStatus.HasDirectWrite || m.privStatus.IsElevated {
@@ -66,37 +67,32 @@ func (m Model) renderHeader() string {
 	} else {
 		privBadge = BadgeDangerStyle.Render("[⚠️ Read-Only]")
 	}
+	privW := lipgloss.Width(privBadge)
 
 	totalEntries := m.hostsFile.TotalEntries()
 	enabledEntries := m.hostsFile.EnabledEntries()
 	stats := fmt.Sprintf("Hosts: %d total, %d active", totalEntries, enabledEntries)
+	statsW := len(stats)
 
-	usedWidth := lipgloss.Width(title) + 2 + lipgloss.Width(privBadge) + lipgloss.Width(stats)
-	gap := m.width - usedWidth
+	gap := m.width - titleW - 2 - privW - statsW
 	if gap < 2 {
-		gap = 2
+		// If screen is narrow, omit privBadge
+		if m.width > titleW+statsW+4 {
+			gap = m.width - titleW - statsW - 2
+			return title + strings.Repeat(" ", gap) + stats
+		}
+		return title
 	}
 
-	header := lipgloss.JoinHorizontal(
-		lipgloss.Center,
-		title,
-		"  ",
-		privBadge,
-		strings.Repeat(" ", gap),
-		stats,
-	)
-
-	// Clamp to terminal width
-	return truncate(header, m.width)
+	return title + "  " + privBadge + strings.Repeat(" ", gap) + stats
 }
 
 func (m Model) renderSidebar(width, height int) string {
-	// With Border (2 cols) and Padding (2 cols), inner printable width is width - 4
+	// Inner printable bounds inside borders (2) and padding (2)
 	innerW := width - 4
 	if innerW < 10 {
 		innerW = 10
 	}
-	// With Border (2 lines) and Padding (0 lines), inner printable lines is height - 2
 	innerH := height - 2
 	if innerH < 4 {
 		innerH = 4
@@ -118,16 +114,18 @@ func (m Model) renderSidebar(width, height int) string {
 			}
 		}
 
-		maxNameLen := innerW - 6
+		countStr := fmt.Sprintf("(%d)", count)
+		maxNameLen := innerW - len(countStr) - 3 // space for prefix (2) and 1 space
 		if maxNameLen < 4 {
 			maxNameLen = 4
 		}
-		itemText := fmt.Sprintf("%-*s (%d)", maxNameLen, truncate(grpName, maxNameLen), count)
+		cleanName := truncatePlain(grpName, maxNameLen)
+		itemText := fmt.Sprintf("%-*s %s", maxNameLen, cleanName, countStr)
 		prefix := "  "
 		if idx == m.selectedGrp {
 			prefix = "▸ "
 		}
-		fullItem := truncate(prefix+itemText, innerW)
+		fullItem := truncatePlain(prefix+itemText, innerW)
 
 		if idx == m.selectedGrp {
 			if m.focus == FocusSidebar {
@@ -146,23 +144,23 @@ func (m Model) renderSidebar(width, height int) string {
 		div := lipgloss.NewStyle().Foreground(ColorMuted).Render(strings.Repeat("─", innerW))
 		lines = append(lines, div)
 		lines = append(lines, lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary).Render("⚡ ACTIONS"))
-		lines = append(lines, truncate(fmt.Sprintf("%s Add Host", KeyBadgeStyle.Render("[a]")), innerW))
-		lines = append(lines, truncate(fmt.Sprintf("%s Edit", KeyBadgeStyle.Render("[e]")), innerW))
-		lines = append(lines, truncate(fmt.Sprintf("%s Delete", KeyBadgeStyle.Render("[d]")), innerW))
-		lines = append(lines, truncate(fmt.Sprintf("%s Toggle", KeyBadgeStyle.Render("[Spc]")), innerW))
-		lines = append(lines, truncate(fmt.Sprintf("%s Search", KeyBadgeStyle.Render("[/]")), innerW))
+		lines = append(lines, fmt.Sprintf("%s Add Host", KeyBadgeStyle.Render("[a]")))
+		lines = append(lines, fmt.Sprintf("%s Edit", KeyBadgeStyle.Render("[e]")))
+		lines = append(lines, fmt.Sprintf("%s Delete", KeyBadgeStyle.Render("[d]")),)
+		lines = append(lines, fmt.Sprintf("%s Toggle", KeyBadgeStyle.Render("[Spc]")))
+		lines = append(lines, fmt.Sprintf("%s Search", KeyBadgeStyle.Render("[/]")))
 
 		remainingLines = innerH - len(lines)
 		if remainingLines >= 5 {
 			lines = append(lines, div)
 			lines = append(lines, lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary).Render("🛡️ SYNC"))
-			lines = append(lines, truncate(fmt.Sprintf("%s Apply", KeyBadgeStyle.Render("[A]")), innerW))
-			lines = append(lines, truncate(fmt.Sprintf("%s Rollback", KeyBadgeStyle.Render("[R]")), innerW))
-			lines = append(lines, truncate(fmt.Sprintf("%s Import", KeyBadgeStyle.Render("[m]")), innerW))
+			lines = append(lines, fmt.Sprintf("%s Apply", KeyBadgeStyle.Render("[A]")))
+			lines = append(lines, fmt.Sprintf("%s Rollback", KeyBadgeStyle.Render("[R]")))
+			lines = append(lines, fmt.Sprintf("%s Import", KeyBadgeStyle.Render("[m]")))
 		}
 	}
 
-	// Ensure slice does not exceed innerH
+	// Clamp to innerH lines
 	if len(lines) > innerH {
 		lines = lines[:innerH]
 	}
@@ -196,11 +194,11 @@ func (m Model) renderTable(width, height int) string {
 
 	var lines []string
 
-	titleText := fmt.Sprintf("HOSTS — %s", currentGrpName)
+	titleText := truncatePlain(fmt.Sprintf("HOSTS — %s", currentGrpName), innerW)
 	if m.searchQuery != "" {
-		titleText += fmt.Sprintf(" (Filter: '%s')", m.searchQuery)
+		titleText = truncatePlain(fmt.Sprintf("HOSTS — %s (Filter: '%s')", currentGrpName, m.searchQuery), innerW)
 	}
-	lines = append(lines, truncate(lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary).Render(titleText), innerW))
+	lines = append(lines, lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary).Render(titleText))
 
 	// Calculate Responsive Column Widths strictly within innerW
 	statusW := 6
@@ -208,12 +206,12 @@ func (m Model) renderTable(width, height int) string {
 	if innerW < 55 {
 		ipW = 12
 	}
-	availForRest := innerW - statusW - ipW - 4 // 4 spaces between columns
+	availForRest := innerW - statusW - ipW - 4 // 4 spaces between 5 columns
 	if availForRest < 8 {
 		availForRest = 8
 	}
 
-	hostW := int(float64(availForRest) * 0.45)
+	hostW := int(float64(availForRest) * 0.40)
 	aliasW := int(float64(availForRest) * 0.25)
 	commentW := availForRest - hostW - aliasW
 
@@ -227,6 +225,14 @@ func (m Model) renderTable(width, height int) string {
 		commentW = 5
 	}
 
+	// Adjust if rounding exceeded innerW
+	for statusW+ipW+hostW+aliasW+commentW+4 > innerW && commentW > 3 {
+		commentW--
+	}
+	for statusW+ipW+hostW+aliasW+commentW+4 > innerW && hostW > 6 {
+		hostW--
+	}
+
 	headerLine := fmt.Sprintf("%-*s %-*s %-*s %-*s %-*s",
 		statusW, "STATUS",
 		ipW, "IP ADDRESS",
@@ -234,7 +240,7 @@ func (m Model) renderTable(width, height int) string {
 		aliasW, "ALIASES",
 		commentW, "COMMENT",
 	)
-	lines = append(lines, TableHeaderStyle.Width(innerW).Render(truncate(headerLine, innerW)))
+	lines = append(lines, TableHeaderStyle.Width(innerW).Render(truncatePlain(headerLine, innerW)))
 
 	visible := m.GetVisibleEntries()
 	maxRows := innerH - len(lines)
@@ -257,34 +263,40 @@ func (m Model) renderTable(width, height int) string {
 
 		for idx := startIdx; idx < endIdx; idx++ {
 			e := visible[idx]
-			statusBadge := BadgeDangerStyle.Render("○ OFF")
+			statusText := "○ OFF"
+			var statusStyled string
 			if e.Enabled {
-				statusBadge = BadgeSuccessStyle.Render("● ON ")
+				statusText = "● ON "
+				statusStyled = BadgeSuccessStyle.Render(statusText)
+			} else {
+				statusStyled = BadgeDangerStyle.Render(statusText)
 			}
 
-			aliasStr := strings.Join(e.Aliases, ",")
-			if len(aliasStr) == 0 {
-				aliasStr = "-"
+			ipClean := truncatePlain(e.IP, ipW)
+			hostClean := truncatePlain(e.Hostname, hostW)
+			aliasClean := truncatePlain(strings.Join(e.Aliases, ","), aliasW)
+			if aliasClean == "" {
+				aliasClean = "-"
 			}
+			commentClean := truncatePlain(e.Comment, commentW)
 
-			rowContent := fmt.Sprintf("%-6s %-*s %-*s %-*s %-*s",
-				statusBadge,
-				ipW, truncate(e.IP, ipW),
-				hostW, truncate(e.Hostname, hostW),
-				aliasW, truncate(aliasStr, aliasW),
-				commentW, truncate(e.Comment, commentW),
+			rowContent := fmt.Sprintf("%s %-*s %-*s %-*s %-*s",
+				statusStyled,
+				ipW, ipClean,
+				hostW, hostClean,
+				aliasW, aliasClean,
+				commentW, commentClean,
 			)
 
-			truncatedRow := truncate(rowContent, innerW)
-			if idx == m.selectedRow {
-				lines = append(lines, SelectedRowStyle.Width(innerW).Render(truncatedRow))
+			if idx == m.selectedRow && m.focus == FocusTable {
+				lines = append(lines, SelectedRowStyle.Render(rowContent))
 			} else {
-				lines = append(lines, NormalRowStyle.Width(innerW).Render(truncatedRow))
+				lines = append(lines, NormalRowStyle.Render(rowContent))
 			}
 		}
 	}
 
-	// Ensure slice does not exceed innerH
+	// Clamp to innerH
 	if len(lines) > innerH {
 		lines = lines[:innerH]
 	}
@@ -306,9 +318,8 @@ func (m Model) renderFooter() string {
 		Foreground(lipgloss.Color(m.statusColor)).
 		Bold(true)
 
-	statusLine := truncate(" "+m.statusMsg, m.width)
+	statusLine := truncatePlain(" "+m.statusMsg, m.width)
 
-	// Responsive shortcuts bar that never wraps
 	var keysText string
 	switch {
 	case m.width >= 105:
@@ -319,7 +330,7 @@ func (m Model) renderFooter() string {
 		keysText = " Tab: Pane │ j/k: Nav │ Spc: Toggle │ a: Add │ A: Apply │ q: Quit"
 	}
 
-	keysLine := StatusbarStyle.Width(m.width).Render(truncate(keysText, m.width))
+	keysLine := StatusbarStyle.Width(m.width).Render(truncatePlain(keysText, m.width))
 
 	return statusStyle.Render(statusLine) + "\n" + keysLine
 }
@@ -358,7 +369,7 @@ func (m Model) renderNoticeModal(boxWidth int) string {
 	lines := []string{
 		ModalTitleStyle.Render(" ℹ️ Permission Notice "),
 		"",
-		truncate(m.noticeMsg, innerW),
+		truncatePlain(m.noticeMsg, innerW),
 		"",
 		lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary).Render("[ Press Enter or Esc ]"),
 	}
@@ -370,17 +381,17 @@ func (m Model) renderHelpModal(boxWidth int) string {
 	lines := []string{
 		ModalTitleStyle.Render(" 📖 Keybindings "),
 		"",
-		truncate("  Tab / h / l   Switch Groups & Table", innerW),
-		truncate("  j / k / ↑ / ↓ Navigate rows", innerW),
-		truncate("  Space         Toggle enabled / disabled", innerW),
-		truncate("  a             Add new host entry", innerW),
-		truncate("  e / Enter     Edit selected host entry", innerW),
-		truncate("  d             Delete selected host entry", innerW),
-		truncate("  /             Fuzzy search & filter", innerW),
-		truncate("  A             Apply enabled to system", innerW),
-		truncate("  R             Rollback system /etc/hosts", innerW),
-		truncate("  m             Import current system hosts", innerW),
-		truncate("  q / Ctrl+C    Quit hostcli", innerW),
+		truncatePlain("  Tab / h / l   Switch Groups & Table", innerW),
+		truncatePlain("  j / k / ↑ / ↓ Navigate rows", innerW),
+		truncatePlain("  Space         Toggle enabled / disabled", innerW),
+		truncatePlain("  a             Add new host entry", innerW),
+		truncatePlain("  e / Enter     Edit selected host entry", innerW),
+		truncatePlain("  d             Delete selected host entry", innerW),
+		truncatePlain("  /             Fuzzy search & filter", innerW),
+		truncatePlain("  A             Apply enabled to system", innerW),
+		truncatePlain("  R             Rollback system /etc/hosts", innerW),
+		truncatePlain("  m             Import current system hosts", innerW),
+		truncatePlain("  q / Ctrl+C    Quit hostcli", innerW),
 		"",
 		lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary).Render("[ Press Esc or ? to Close ]"),
 	}
@@ -408,7 +419,7 @@ func (m Model) renderDeleteModal(boxWidth int) string {
 	lines := []string{
 		ModalTitleStyle.Render(" ⚠️ Confirm Delete "),
 		"",
-		truncate(fmt.Sprintf("Delete host '%s'?", hostName), innerW),
+		truncatePlain(fmt.Sprintf("Delete host '%s'?", hostName), innerW),
 		"",
 		lipgloss.NewStyle().Foreground(ColorDanger).Bold(true).Render("[y] Delete") + "    " +
 			lipgloss.NewStyle().Foreground(ColorWhite).Render("[n / Esc] Cancel"),
@@ -421,11 +432,11 @@ func (m Model) renderRollbackModal(boxWidth int) string {
 	lines := []string{
 		ModalTitleStyle.Render(" 🛡️ System Hosts Rollback "),
 		"",
-		truncate("  [1] Strip Managed Block", innerW),
-		truncate("      (Removes # BEGIN/END lines)", innerW),
+		truncatePlain("  [1] Strip Managed Block", innerW),
+		truncatePlain("      (Removes # BEGIN/END lines)", innerW),
 		"",
-		truncate("  [2] Restore Pristine Original Backup", innerW),
-		truncate("      (Restores hosts.original.bak)", innerW),
+		truncatePlain("  [2] Restore Pristine Original Backup", innerW),
+		truncatePlain("      (Restores hosts.original.bak)", innerW),
 		"",
 		lipgloss.NewStyle().Foreground(ColorMuted).Render("Press 1, 2, or Esc to Cancel"),
 	}
@@ -470,7 +481,7 @@ func (m Model) renderEditModal(boxWidth int) string {
 		if form.FocusIndex == f.Index {
 			lblStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
 		}
-		lines = append(lines, truncate(fmt.Sprintf("%-*s: %s", labelW, lblStyle.Render(f.Label), f.View), innerW))
+		lines = append(lines, fmt.Sprintf("%-*s: %s", labelW, lblStyle.Render(f.Label), f.View))
 	}
 
 	// Enabled Checkbox
@@ -482,7 +493,7 @@ func (m Model) renderEditModal(boxWidth int) string {
 	if form.FocusIndex == FieldEnabled {
 		enableStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
 	}
-	lines = append(lines, truncate(fmt.Sprintf("%-*s: %s", labelW, enableStyle.Render("Status"), enableStyle.Render(enableBox+" (Spc to toggle)")), innerW))
+	lines = append(lines, fmt.Sprintf("%-*s: %s", labelW, enableStyle.Render("Status"), enableStyle.Render(enableBox+" (Spc to toggle)")))
 	lines = append(lines, "")
 
 	// Action Buttons
@@ -501,15 +512,16 @@ func (m Model) renderEditModal(boxWidth int) string {
 	return ModalBoxStyle.Width(boxWidth - 2).Render(strings.Join(lines, "\n"))
 }
 
-func truncate(s string, maxLen int) string {
+func truncatePlain(s string, maxLen int) string {
 	if maxLen <= 0 {
 		return ""
 	}
-	if len(s) <= maxLen {
+	runes := []rune(s)
+	if len(runes) <= maxLen {
 		return s
 	}
-	if maxLen <= 3 {
-		return s[:maxLen]
+	if maxLen <= 2 {
+		return string(runes[:maxLen])
 	}
-	return s[:maxLen-3] + ".."
+	return string(runes[:maxLen-2]) + ".."
 }

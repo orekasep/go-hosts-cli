@@ -81,8 +81,7 @@ var (
 	// Statusbar & Cheatsheet Styles
 	StatusbarStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#EEEEEE")).
-			Background(lipgloss.Color("#22222E")).
-			Padding(0, 1)
+			Background(lipgloss.Color("#22222E"))
 
 	KeyBadgeStyle = lipgloss.NewStyle().
 			Bold(true).
